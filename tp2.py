@@ -5,7 +5,7 @@ import pandas as pd
 import re
 
 # Ruta de la carpeta "datos"
-carpeta = 'datos'
+carpeta = 'datos_madera'
 
 # Lista para almacenar los DataFrames de cada archivo CSV
 dataframes = []
