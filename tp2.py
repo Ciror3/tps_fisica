@@ -130,8 +130,12 @@ def plot_pendulum_trajectories(data):
 
 def plot_time_trajectories(data):
     for char, columns in data.items():
-        if char in ['A', 'D', 'F', 'H']:
+        if char in ['A', 'E', 'H']:
             plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'Amplitud: {char}')
+        if char == 'H':
+            maxi = max(columns['columna_θ_' + 'H'])
+            plt.plot(columns['columna_t_' + 'H'],  maxi * np.sin(columns['columna_θ_' + 'H']),  label=f"Amplitud: {char} en sin(H)")
+
     plt.xlabel('Tiempo')
     plt.ylabel('θ')
     plt.legend()
@@ -182,14 +186,10 @@ def calculate_and_plot_periods(data):
             plt.show()
 
 # Ejemplo de uso:
-calculate_and_plot_periods(columnas_por_letra_platino)
+#calculate_and_plot_periods(columnas_por_letra_platino)
+calculate_and_plot_periods(columnas_por_letra_bronce)
 
-# plot_pendulum_trajectories(columnas_por_letra_platino)
-# plot_pendulum_trajectories(columnas_por_letra_madera)
-# plot_pendulum_trajectories(columnas_por_letra_bronce)
+
 # plot_time_trajectories(columnas_por_letra_platino)
 # plot_time_trajectories(columnas_por_letra_madera)
-# plot_time_trajectories(columnas_por_letra_bronce)
-# plot_time_trajectories_sin(columnas_por_letra_platino)
-# plot_time_trajectories_sin(columnas_por_letra_madera)
-# plot_time_trajectories_sin(columnas_por_letra_bronce)
+plot_time_trajectories(columnas_por_letra_bronce)
