@@ -132,15 +132,27 @@ def plot_time_trajectories(data):
     for char, columns in data.items():
         if char in ['A', 'E', 'H']:
             plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'Amplitud: {char}')
-        if char == 'H':
-            maxi = max(columns['columna_θ_' + 'H'])
-            plt.plot(columns['columna_t_' + 'H'],  maxi * np.sin(columns['columna_θ_' + 'H']),  label=f"Amplitud: {char} en sin(H)")
 
     plt.xlabel('Tiempo')
     plt.ylabel('θ')
     plt.legend()
     plt.show()
 
+def plot_Taylor_vs_H(data):
+    for char, columns in data.items():
+        if char == 'H':
+            max_theta = max(columns['columna_θ_' + char])
+            tiempo = columns['columna_t_' + char]
+            periodo = 1.4  # Definir el periodo deseado
+            omega = 2 * np.pi / periodo  # Calcular la frecuencia angular
+            amplitud_seno = np.sin(omega * tiempo) * max_theta  # Calcular el seno con la amplitud de θ y el periodo deseado
+            plt.plot(tiempo, amplitud_seno, linestyle='--', label=f'seno de theta de: {char}')
+            plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'Amplitud: {char}')
+    plt.xlabel('Tiempo')
+    plt.ylabel('θ')
+    plt.legend()
+    plt.show()
+            
 # Por ejemplo, para graficar en función del tiempo para la posición en x (fijando amplitud inicial):
 
 def plot_time_trajectories_sin(data):
@@ -189,7 +201,8 @@ def calculate_and_plot_periods(data):
 #calculate_and_plot_periods(columnas_por_letra_platino)
 calculate_and_plot_periods(columnas_por_letra_bronce)
 
-
 # plot_time_trajectories(columnas_por_letra_platino)
 # plot_time_trajectories(columnas_por_letra_madera)
 plot_time_trajectories(columnas_por_letra_bronce)
+plot_Taylor_vs_H(columnas_por_letra_bronce)
+
