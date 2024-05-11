@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
 import re
 
 # Ruta de la carpeta "datos"
@@ -14,6 +15,8 @@ dataframes_platino = []
 dataframes_bronce = []
 dataframes_madera = []
 dataframes_largos = []
+masas = [72.18, 21.96, 4.83]
+errores_masas = [0.02, 0.06, 0.03]
 
 letters = ['A','B','C','D','E','F','G','H','largo45','largo35','largo25','largo15','largo5']
 
@@ -203,20 +206,22 @@ def plot_amplitude_vs_time(dataframes):
     plt.show()
 
 def calculate_and_plot_periods(data):
+    pers = []
     for char, columns in data.items():
-        if char in ['A', 'D', 'F', 'H']:  # Solo para amplitudes específicas
+        if char in ['D']:  # Solo para amplitudes específicas
             theta_con_ruido = columns['columna_θ_' + char].values
             t = columns['columna_t_' + char].values
             omega = 2*np.pi*np.sqrt(45/9.81)
             # Encontrar picos positivos
-            picos, _ = find_peaks(theta_con_ruido, distance=omega*2, height=0.15)
+            picos, _ = find_peaks(theta_con_ruido, distance=omega*2)
             # Extraer alturas de los picos
             alturas_picos = theta_con_ruido[picos]
             # Calcular el período de la oscilación
             periodos = np.diff(t[picos])
             mean_period = np.mean(periodos)
             std_period = np.std(periodos)
-            print(f"Amplitud: {char}, Período medio: {mean_period:.1f} +/- {std_period:.1f}")
+            pers.append((mean_period,std_period))
+            print(f"Amplitud: {char}, Período medio: {mean_period:.2f} +/- {std_period:.2f}")
             # Gráfica de Picos
             plt.plot(t, theta_con_ruido)
             plt.plot(t[picos], alturas_picos, "x")
@@ -224,8 +229,10 @@ def calculate_and_plot_periods(data):
             plt.ylabel('Ángulo (rad)')
             plt.title(f'Picos Identificados en la Oscilación (Amplitud: {char})')
             plt.show()
+    return pers
 
 def calculate_and_plot_periods_L(data):
+    returnable = []
     for char, columns in data.items():
         if char in ['largo45','largo5', 'largo15', 'largo25', 'largo35']:  # Solo para amplitudes específicas
             theta_con_ruido = columns['columna_θ_' + char].values
@@ -240,8 +247,8 @@ def calculate_and_plot_periods_L(data):
                 i = 35
             elif char == 'largo45':
                 theta_con_ruido = -1* (columns['columna_θ_' + char].values + 90)
-                i == 45
-            omega = 2*np.pi*np.sqrt(i/9.81)
+                i = 45
+            omega = 2*np.pi*np.sqrt(i/9.81)#Periodo
             # Encontrar picos positivos
             picos, _ = find_peaks(theta_con_ruido, distance=omega*2, height=0.15)
             # Extraer alturas de los picos
@@ -250,6 +257,7 @@ def calculate_and_plot_periods_L(data):
             periodos = np.diff(t[picos])
             mean_period = np.mean(periodos)
             std_period = np.std(periodos)
+            returnable.append((mean_period,std_period, i))
             print(f"largo: {char}, Período medio: {mean_period:.2f} +/- {std_period:.2f}")
             # Gráfica de Picos
             plt.plot(t, theta_con_ruido)
@@ -258,14 +266,103 @@ def calculate_and_plot_periods_L(data):
             plt.ylabel('Ángulo (rad)')
             plt.title(f'Picos Identificados en la Oscilación (Amplitud: {char})')
             plt.show()
+    return returnable
 
+def plot_omega_vs_long(per):
+    # Desempaquetamos los valores de T_per, err_per y longitudes de la lista per
+    T_per, err_per, longitudes = zip(*per)
+
+    # Calculamos omega a partir de T_per
+    omega = [2 * np.pi / T for T in T_per]
+
+    # Trama de puntos de datos con barras de error
+    plt.errorbar(longitudes, omega, xerr= 0.01 ,yerr=err_per, fmt='o', capsize=5)
+
+    # Etiquetas de los ejes y título
+    plt.xlabel('Longitud (cm)')
+    plt.ylabel('Frecuencia Angular (omega) (Rad/s)')
+    
+    # Mostramos la cuadrícula
+    plt.grid(True)
+
+    # Mostramos la gráfica
+    plt.show()
+
+def plot_omega_vs_mass(pers):
+    # Extraemos los períodos y errores de la lista de tuplas
+
+    periodos = []
+    for per in pers:
+        t = per[0][0]
+        periodos.append(t)
+    errores_periodos = []
+    for per in pers:
+        err = per[0][1]
+        errores_periodos.append(err)
+
+    # Calculamos las frecuencias angulares (omega) a partir de los períodos
+    omegas = [2 * np.pi / T for T in periodos]
+
+    # Creamos la figura y los ejes
+    plt.figure(figsize=(8, 6))
+
+    # Trazamos los puntos de datos con barras de error
+    plt.errorbar(masas, omegas, xerr=errores_masas, yerr=errores_periodos, fmt='o', capsize=5)
+
+    # Etiquetas de los ejes y título
+    plt.xlabel('Masa (g)')
+    plt.ylabel('Frecuencia Angular (omega) (Rad/s)')
+
+    # Mostramos la cuadrícula
+    plt.grid(True)
+
+    # Mostramos la gráfica
+    plt.show()
+
+def linear_func(l, m, c):
+    return m * l + c
+
+def estimate_gravity_from_periods(periods_longitudes):
+    # Desempaquetamos los datos de períodos y longitudes
+    periods, errores, longitudes = zip(*periods_longitudes)
+
+    # Calculamos el cuadrado de los períodos
+    T_squared = np.square(periods)
+
+    # Realizamos el ajuste lineal en escala log-log
+    log_longitudes = np.log(longitudes)
+    log_T_squared = np.log(T_squared)
+    params, _ = curve_fit(linear_func, log_longitudes, log_T_squared)
+    m, c = params
+
+    # Calculamos la pendiente (m), que está relacionada con g
+    g_estimado = 4 * np.pi**2 / np.exp(m)
+
+    # Graficamos los datos y la línea ajustada
+    plt.figure(figsize=(10, 6))
+    plt.errorbar(longitudes, T_squared, yerr=np.square(errores), fmt='o', capsize=5, label='Datos')
+    plt.plot(longitudes, np.exp(linear_func(np.log(longitudes), m, c)), label=f'Ajuste Lineal: $4π²/g$ = {np.exp(m):.2f}', color='red')
+    plt.xlabel('Longitud (cm)')
+    plt.ylabel('$T^2$ (s^2)')
+    plt.title(f'Estimación de g: {g_estimado:.2f} m/s^2')
+    plt.legend()
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.grid(True)
+    plt.show()
+
+    # Devolvemos el valor estimado de g
+    return g_estimado
 # Ejemplo de uso:
 #calculate_and_plot_periods(columnas_por_letra_platino)
 #calculate_and_plot_periods(columnas_por_letra_bronce)
-calculate_and_plot_periods_L(columnas_por_letra_largo)
-plot_time_trajectories_L(columnas_por_letra_largo)
-# plot_time_trajectories(columnas_por_letra_platino)
-# plot_time_trajectories(columnas_por_letra_madera)
-#plot_time_trajectories(columnas_por_letra_bronce)
+per = calculate_and_plot_periods_L(columnas_por_letra_largo)
+plot_omega_vs_long(per)
+# plot_time_trajectories_L(columnas_por_letra_largo)
+perp = calculate_and_plot_periods(columnas_por_letra_platino)
+perm = calculate_and_plot_periods(columnas_por_letra_madera)
+perb = calculate_and_plot_periods(columnas_por_letra_bronce)
+periods = [perp,perm,perb]
+plot_omega_vs_mass(periods)
+g = estimate_gravity_from_periods(per)
 #plot_Taylor_vs_H(columnas_por_letra_bronce)
-
