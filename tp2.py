@@ -15,7 +15,7 @@ dataframes_bronce = []
 dataframes_madera = []
 dataframes_largos = []
 
-letters = ['A','B','C','D','E','F','G','H','largo35','largo25','largo15','largo5']
+letters = ['A','B','C','D','E','F','G','H','largo45','largo35','largo25','largo15','largo5']
 
 for archivo in os.listdir(carpeta):
     # Verifica si el archivo es un archivo CSV
@@ -77,7 +77,7 @@ def generate_dicc_and_find_angles(dicc, dataframe):
 
     for letra, columnas in dicc.items():
         # Verifica si la letra es F, G o H
-        if letra in ['F', 'G', 'H','largo35','largo25']:
+        if letra in ['F', 'G', 'H', 'largo5', 'largo15','largo35','largo25']:
             # Itera sobre las columnas para esta letra
             for nombre_columna, columna in columnas.items():
                 # Verifica si la columna es theta
@@ -91,6 +91,10 @@ def generate_dicc_and_find_angles(dicc, dataframe):
                         i = 35
                     elif letra == 'largo25':
                         i = 25
+                    elif letra == 'largo15':
+                        i = 15
+                    elif letra == 'largo5':
+                        i = 5
 
                     columnas[nombre_columna] = angle_transformer(columnas[nombre_columna_x], columnas[nombre_columna_y], i)
 
@@ -126,6 +130,7 @@ def plot_pendulum_trajectories(data):
     plt.show()
 
 
+
 # Llama a la función para graficar el recorrido del péndulo para el platino
 
 def plot_time_trajectories(data):
@@ -133,6 +138,29 @@ def plot_time_trajectories(data):
         if char in ['A', 'E', 'H']:
             plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'Amplitud: {char}')
 
+    plt.xlabel('Tiempo')
+    plt.ylabel('θ')
+    plt.legend()
+    plt.show()
+
+def plot_time_trajectories_L(data):
+    for char, columns in data.items():
+        if char in ['largo45', 'largo15', 'largo25', 'largo35']:
+            if char == 'largo45':
+                i = 45
+            elif char == 'largo5':
+                i = 5
+            elif char == 'largo15':
+                i = 15
+            elif char == 'largo25':
+                i = 25
+            elif char == 'largo35':
+                i = 35
+            if char == 'largo45':
+                plt.plot(columns['columna_t_' + char],  -1* (columns['columna_θ_' + char].values + 90), label=f'longitud: {i} cm')
+            else:                             
+                plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'longitud: {i} cm')
+    
     plt.xlabel('Tiempo')
     plt.ylabel('θ')
     plt.legend()
@@ -197,12 +225,47 @@ def calculate_and_plot_periods(data):
             plt.title(f'Picos Identificados en la Oscilación (Amplitud: {char})')
             plt.show()
 
+def calculate_and_plot_periods_L(data):
+    for char, columns in data.items():
+        if char in ['largo45','largo5', 'largo15', 'largo25', 'largo35']:  # Solo para amplitudes específicas
+            theta_con_ruido = columns['columna_θ_' + char].values
+            t = columns['columna_t_' + char].values
+            if char == 'largo5':
+                i= 5
+            elif char == 'largo15':
+                i = 15
+            elif char == 'largo25':
+                i = 25
+            elif char == 'largo35':
+                i = 35
+            elif char == 'largo45':
+                theta_con_ruido = -1* (columns['columna_θ_' + char].values + 90)
+                i == 45
+            omega = 2*np.pi*np.sqrt(i/9.81)
+            # Encontrar picos positivos
+            picos, _ = find_peaks(theta_con_ruido, distance=omega*2, height=0.15)
+            # Extraer alturas de los picos
+            alturas_picos = theta_con_ruido[picos]
+            # Calcular el período de la oscilación
+            periodos = np.diff(t[picos])
+            mean_period = np.mean(periodos)
+            std_period = np.std(periodos)
+            print(f"largo: {char}, Período medio: {mean_period:.2f} +/- {std_period:.2f}")
+            # Gráfica de Picos
+            plt.plot(t, theta_con_ruido)
+            plt.plot(t[picos], alturas_picos, "x")
+            plt.xlabel('Tiempo (s)')
+            plt.ylabel('Ángulo (rad)')
+            plt.title(f'Picos Identificados en la Oscilación (Amplitud: {char})')
+            plt.show()
+
 # Ejemplo de uso:
 #calculate_and_plot_periods(columnas_por_letra_platino)
-calculate_and_plot_periods(columnas_por_letra_bronce)
-
+#calculate_and_plot_periods(columnas_por_letra_bronce)
+calculate_and_plot_periods_L(columnas_por_letra_largo)
+plot_time_trajectories_L(columnas_por_letra_largo)
 # plot_time_trajectories(columnas_por_letra_platino)
 # plot_time_trajectories(columnas_por_letra_madera)
-plot_time_trajectories(columnas_por_letra_bronce)
-plot_Taylor_vs_H(columnas_por_letra_bronce)
+#plot_time_trajectories(columnas_por_letra_bronce)
+#plot_Taylor_vs_H(columnas_por_letra_bronce)
 
