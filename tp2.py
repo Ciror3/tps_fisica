@@ -73,8 +73,10 @@ def generate_dicc_and_find_angles(dicc, dataframe):
                     dicc[char][f'columna_{col}_{char}'] = df[col] - minimo
                 else:
                     dicc[char][f'columna_{col}_{char}'] = df[col]
+
             else:
                 dicc[char][f'columna_{col}_{char}'] = df[col]
+        
     
     # Itera sobre cada letra en el diccionario columnas_por_letra
 
@@ -100,6 +102,8 @@ def generate_dicc_and_find_angles(dicc, dataframe):
                         i = 5
 
                     columnas[nombre_columna] = angle_transformer(columnas[nombre_columna_x], columnas[nombre_columna_y], i)
+                    if letra == 'largo35':
+                        columnas[nombre_columna] = columnas[nombre_columna]*-1
 
 def generate_dicc_for_bronce(dicc, dataframe):
     for df, char in dataframe:
@@ -133,7 +137,6 @@ def plot_pendulum_trajectories(data):
     plt.show()
 
 
-
 # Llama a la función para graficar el recorrido del péndulo para el platino
 
 def plot_time_trajectories(data):
@@ -146,12 +149,13 @@ def plot_time_trajectories(data):
     plt.legend()
     plt.show()
 
+
 def plot_time_trajectories_L(data):
     for char, columns in data.items():
         if char in ['largo45', 'largo15', 'largo25', 'largo35']:
-            if char == 'largo45':
-                i = 45
-            elif char == 'largo5':
+            # if char == 'largo45':
+            #     i = 45
+            if char == 'largo5':
                 i = 5
             elif char == 'largo15':
                 i = 15
@@ -160,7 +164,8 @@ def plot_time_trajectories_L(data):
             elif char == 'largo35':
                 i = 35
             if char == 'largo45':
-                plt.plot(columns['columna_t_' + char],  -1* (columns['columna_θ_' + char].values + 90), label=f'longitud: {i} cm')
+                continue
+            #     plt.plot(columns['columna_t_' + char],  -1* (columns['columna_θ_' + char].values + 90), label=f'longitud: {i} cm')
             else:                             
                 plt.plot(columns['columna_t_' + char], columns['columna_θ_' + char], label=f'longitud: {i} cm')
     
@@ -171,7 +176,7 @@ def plot_time_trajectories_L(data):
 
 def plot_Taylor_vs_H(data):
     for char, columns in data.items():
-        if char == 'H':
+        if char == 'F':
             max_theta = max(columns['columna_θ_' + char])
             tiempo = columns['columna_t_' + char]
             periodo = 1.4  # Definir el periodo deseado
@@ -274,9 +279,11 @@ def plot_omega_vs_long(per):
 
     # Calculamos omega a partir de T_per
     omega = [2 * np.pi / T for T in T_per]
-
+    error_omega = (2 * np.pi / np.square(T_per)) * err_per
+    print(error_omega)
+    print(omega)
     # Trama de puntos de datos con barras de error
-    plt.errorbar(longitudes, omega, xerr= 0.01 ,yerr=err_per, fmt='o', capsize=5)
+    plt.errorbar(longitudes, omega, xerr= 0.01 ,yerr=error_omega, fmt='o', capsize=5)
 
     # Etiquetas de los ejes y título
     plt.xlabel('Longitud (cm)')
@@ -300,14 +307,16 @@ def plot_omega_vs_mass(pers):
         err = per[0][1]
         errores_periodos.append(err)
 
+    error_omega = (2 * np.pi / np.square(periodos)) * errores_periodos
     # Calculamos las frecuencias angulares (omega) a partir de los períodos
     omegas = [2 * np.pi / T for T in periodos]
-
+    print(error_omega)
+    print(omegas)
     # Creamos la figura y los ejes
     plt.figure(figsize=(8, 6))
 
     # Trazamos los puntos de datos con barras de error
-    plt.errorbar(masas, omegas, xerr=errores_masas, yerr=errores_periodos, fmt='o', capsize=5)
+    plt.errorbar(masas, omegas, xerr=errores_masas, yerr=error_omega, fmt='o', capsize=5)
 
     # Etiquetas de los ejes y título
     plt.xlabel('Masa (g)')
@@ -326,22 +335,24 @@ def estimate_gravity_from_periods(periods_longitudes):
     # Desempaquetamos los datos de períodos y longitudes
     periods, errores, longitudes = zip(*periods_longitudes)
 
+    print(periods)
+    
     # Calculamos el cuadrado de los períodos
     T_squared = np.square(periods)
 
     # Realizamos el ajuste lineal en escala log-log
     log_longitudes = np.log(longitudes)
     log_T_squared = np.log(T_squared)
-    params, _ = curve_fit(linear_func, log_longitudes, log_T_squared)
+    params, cov = curve_fit(linear_func, log_longitudes, log_T_squared)
     m, c = params
-
+    error_m = np.sqrt(np.diag(cov))[0]
     # Calculamos la pendiente (m), que está relacionada con g
     g_estimado = 4 * np.pi**2 / np.exp(m)
 
     # Graficamos los datos y la línea ajustada
     plt.figure(figsize=(10, 6))
     plt.errorbar(longitudes, T_squared, yerr=np.square(errores), fmt='o', capsize=5, label='Datos')
-    plt.plot(longitudes, np.exp(linear_func(np.log(longitudes), m, c)), label=f'Ajuste Lineal: $4π²/g$ = {np.exp(m):.2f}', color='red')
+    plt.plot(longitudes, np.exp(linear_func(np.log(longitudes), m, c)), label=f'Ajuste Lineal: $4π²/g$ = {np.exp(m):.2f} +/- {error_m:.2f}, pendiente m', color='red')
     plt.xlabel('Longitud (cm)')
     plt.ylabel('$T^2$ (s^2)')
     plt.title(f'Estimación de g: {g_estimado:.2f} m/s^2')
@@ -353,16 +364,18 @@ def estimate_gravity_from_periods(periods_longitudes):
 
     # Devolvemos el valor estimado de g
     return g_estimado
+
 # Ejemplo de uso:
-#calculate_and_plot_periods(columnas_por_letra_platino)
-#calculate_and_plot_periods(columnas_por_letra_bronce)
-per = calculate_and_plot_periods_L(columnas_por_letra_largo)
-plot_omega_vs_long(per)
+plot_time_trajectories_L(columnas_por_letra_largo)
+# calculate_and_plot_periods(columnas_por_letra_platino)
+# calculate_and_plot_periods(columnas_por_letra_bronce)
+# per = calculate_and_plot_periods_L(columnas_por_letra_largo)
+# plot_omega_vs_long(per)
 # plot_time_trajectories_L(columnas_por_letra_largo)
-perp = calculate_and_plot_periods(columnas_por_letra_platino)
-perm = calculate_and_plot_periods(columnas_por_letra_madera)
-perb = calculate_and_plot_periods(columnas_por_letra_bronce)
-periods = [perp,perm,perb]
-plot_omega_vs_mass(periods)
-g = estimate_gravity_from_periods(per)
+# perp = calculate_and_plot_periods(columnas_por_letra_platino)
+# perm = calculate_and_plot_periods(columnas_por_letra_madera)
+# perb = calculate_and_plot_periods(columnas_por_letra_bronce)
+# periods = [perp,perm,perb]
+# plot_omega_vs_mass(periods)
+# g = estimate_gravity_from_periods(per)
 #plot_Taylor_vs_H(columnas_por_letra_bronce)
